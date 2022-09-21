@@ -21,7 +21,7 @@ pip install -r requirements.txt
 Once you have satisfied all the requirements, you can run the base iColoriT model by executing
 
 ```
-python3 icolorit_ui.py
+python3 colorize_ui.py
 ```
 
 ### Controls
