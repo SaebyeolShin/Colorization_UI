@@ -42,7 +42,7 @@ class IColoriTUI(QWidget):
         ## colorize 버튼 추가
         ###################################
 
-        self.colorize_ours = QPushButton("&hint + no hint") # colorize as our method
+        self.colorize_ours = QPushButton("&hint + no hint (default)") # colorize as our method
         self.colorize_ours.setFixedWidth(self.usedPalette.width()*0.75)
         self.colorize_ours.setFixedHeight(35)
 
@@ -67,6 +67,11 @@ class IColoriTUI(QWidget):
         groupBox.setLayout(self.Colorize_Menu)
         colorLayout.addWidget(groupBox)
 
+        self.colorize_ours.clicked.connect(self.reset)
+        self.colorize_hint.clicked.connect(self.reset)
+        self.colorize_nohint.clicked.connect(self.reset)
+
+        ###################################
         ###################################
 
         colorLayout.setAlignment(Qt.AlignCenter)
