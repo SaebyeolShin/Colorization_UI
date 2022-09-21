@@ -37,7 +37,39 @@ class IColoriTUI(QWidget):
         self.colorPush.setStyleSheet("background-color: grey")
         colorPushLayout = self.AddWidget(self.colorPush, 'Current Color')
         colorLayout.addLayout(colorPushLayout)
-        colorLayout.setAlignment(Qt.AlignTop)
+        
+        ###################################
+        ## colorize 버튼 추가
+        ###################################
+
+        self.colorize_ours = QPushButton("&hint + no hint") # colorize as our method
+        self.colorize_ours.setFixedWidth(self.usedPalette.width()*0.75)
+        self.colorize_ours.setFixedHeight(35)
+
+
+        self.colorize_hint = QPushButton("&hint") # colorize hint
+        self.colorize_hint.setFixedWidth(self.usedPalette.width()*0.75)
+        self.colorize_hint.setFixedHeight(35)
+
+        self.colorize_nohint = QPushButton("&no hint") # colorize hint
+        self.colorize_nohint.setFixedWidth(self.usedPalette.width()*0.75)
+        self.colorize_nohint.setFixedHeight(35)
+
+
+        self.Colorize_Menu = QVBoxLayout()
+        self.Colorize_Menu.setSpacing(30)
+        self.Colorize_Menu.addWidget(self.colorize_ours)
+        self.Colorize_Menu.addWidget(self.colorize_hint)
+        self.Colorize_Menu.addWidget(self.colorize_nohint)
+        self.Colorize_Menu.setAlignment(Qt.AlignCenter)
+        
+        groupBox = QGroupBox("Colorization Mode")
+        groupBox.setLayout(self.Colorize_Menu)
+        colorLayout.addWidget(groupBox)
+
+        ###################################
+
+        colorLayout.setAlignment(Qt.AlignCenter)
 
         # drawPad layout
         drawPadLayout = QVBoxLayout()
