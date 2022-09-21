@@ -13,7 +13,7 @@ Checkpoints for iColoriT models are available in the links below.
 
 Our code is implemented in Python 3.8, torch>=1.8.2, and PyQt5
 ```
-git clone https://github.com/pmh9960/iColoriT.git](https://github.com/SaebyeolShin/Colorization_UI.git
+git clone https://github.com/SaebyeolShin/Colorization_UI.git
 pip install -r requirements.txt
 ```
 
