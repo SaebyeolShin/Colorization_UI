@@ -8,8 +8,8 @@ put pretrained models into  ./saved_models/best/
 
 |  	| hint |  Link 	|
 |:---:|:---:|:---:|
-| Our Model | &cross	| [Released Soon!] | 
-| iColoriT | &check	| [iColoriT (Google Drive)](https://drive.google.com/file/d/16i9ulB4VRbFLbLlAa7UjIQR6J334BeKW/view?usp=sharing)	|
+| Our Model | &cross;	| [Released Soon!] | 
+| iColoriT | &check;	| [iColoriT (Google Drive)](https://drive.google.com/file/d/16i9ulB4VRbFLbLlAa7UjIQR6J334BeKW/view?usp=sharing)	|
 
 ## Installation
 
