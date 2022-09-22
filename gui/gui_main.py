@@ -51,7 +51,7 @@ class IColoriTUI(QWidget):
         self.colorize_hint.setFixedWidth(self.usedPalette.width()*0.75)
         self.colorize_hint.setFixedHeight(35)
 
-        self.colorize_nohint = QPushButton("&no hint") # colorize hint
+        self.colorize_nohint = QPushButton("&no hint") # colorize nohint
         self.colorize_nohint.setFixedWidth(self.usedPalette.width()*0.75)
         self.colorize_nohint.setFixedHeight(35)
 
@@ -67,9 +67,9 @@ class IColoriTUI(QWidget):
         groupBox.setLayout(self.Colorize_Menu)
         colorLayout.addWidget(groupBox)
 
-        self.colorize_ours.clicked.connect(self.reset)
-        self.colorize_hint.clicked.connect(self.reset)
-        self.colorize_nohint.clicked.connect(self.reset)
+        self.colorize_ours.clicked.connect(lambda:self.reset_mode("ours"))
+        self.colorize_hint.clicked.connect(lambda:self.reset_mode("hint"))
+        self.colorize_nohint.clicked.connect(lambda:self.reset_mode("nohint"))
 
         ###################################
         ###################################
@@ -207,3 +207,15 @@ class IColoriTUI(QWidget):
 
         if event.key() == Qt.Key_L:
             self.load()
+
+    ######################################
+    ##### reset colorization mode #######
+    ######################################
+    def reset_mode(self, mode):
+        # self.start_t = time.time()
+        print('============================reset mode=========================================')
+        self.reset()
+        print(mode)
+        return mode
+    ######################################
+    ######################################
