@@ -15,15 +15,6 @@ from skimage import color
 from .lab_gamut import snap_ab
 from .ui_control import UIControl
 
-global mode
-mode = "ours"
-
-def mode_info(md):
-    global mode
-    mode = md
-    print(f"colorization mode selected: {mode}")
-    return mode
-
 class GUIDraw(QWidget):
 
     # Signals
@@ -33,14 +24,11 @@ class GUIDraw(QWidget):
     update_ab = pyqtSignal(object)
     update_result = pyqtSignal(object)
 
-    def __init__(self, model=None, nohint_model=None, load_size=224, win_size=512, device='cpu'):
+    def __init__(self, model=None, load_size=224, win_size=512, device='cpu'):
         QWidget.__init__(self)
         self.image_file = None
         self.pos = None
         self.model = model
-        # add
-        self.nohint_model = nohint_model
-
         self.win_size = win_size
         self.load_size = load_size
         self.device = device
@@ -64,31 +52,6 @@ class GUIDraw(QWidget):
     def init_result(self, image_file):
         # self.read_image(image_file.encode('utf-8'))  # read an image
         self.read_image(image_file)  # read an image
-        ##############################
-        # my model
-        im_full = cv2.resize(self.im_full, (768,768), interpolation=cv2.INTER_AREA)
-        gray = cv2.cvtColor(im_full, cv2.COLOR_BGR2GRAY)
-        gray = np.stack([gray, gray, gray], -1)
-        l_img = cv2.cvtColor(gray, cv2.COLOR_BGR2LAB)[:,:,[0]].transpose((2,0,1))
-        l_img = torch.from_numpy(l_img).type(torch.FloatTensor).to(self.device)/255
-        ab = self.nohint_model(l_img.unsqueeze(0))[0]#.detach().cpu().numpy().transpose((1,2,0))
-
-        lab = torch.cat([l_img, ab], axis=0).permute(1,2,0).cpu().detach().numpy() * 255 # h,w,c
-        lab = lab.astype(np.uint8)
-        self.my_results = cv2.cvtColor(lab, cv2.COLOR_LAB2BGR) # 왜.. gbr밖에
-
-        #######
-        # 저장용
-        ab = ab.permute(1,2,0).cpu().detach().numpy() * 255
-        ab = cv2.resize(ab, (self.im_full.shape[1],self.im_full.shape[0]), interpolation=cv2.INTER_AREA) # INTER_CUBIC
-        im_l = cv2.cvtColor(self.im_full, cv2.COLOR_BGR2LAB)[:,:,[0]]
-        org_my_results = np.concatenate([im_l, ab], axis=2)
-        org_my_results = org_my_results.astype(np.uint8)
-
-        self.org_my_results = cv2.cvtColor(org_my_results, cv2.COLOR_LAB2BGR) # 왜.. gbr밖에
-
-        ##############################
-        #
         self.reset()
 
     def get_batches(self, img_dir):
@@ -139,7 +102,6 @@ class GUIDraw(QWidget):
         self.im_rgb = cv2.cvtColor(im_bgr, cv2.COLOR_BGR2RGB)
         lab_win = color.rgb2lab(self.im_win[:, :, ::-1])
 
-        self.org_im_l = color.rgb2lab(self.im_full[:, :, ::-1])[:, :, [0]]
         self.im_lab = color.rgb2lab(im_bgr[:, :, ::-1])
         self.im_l = self.im_lab[:, :, 0]
         self.l_win = lab_win[:, :, 0]
@@ -262,38 +224,18 @@ class GUIDraw(QWidget):
     def save_result(self):
         path = os.path.abspath(self.image_file)
         path, ext = os.path.splitext(path)
-        print(path)
-        # add
-        #########
-        # original size image
-        #########
-        org_ab = cv2.resize(self.ab, (self.im_full.shape[1],self.im_full.shape[0]), interpolation=cv2.INTER_AREA) # INTER_CUBIC
-        org_ab = org_ab * 110
-        org_pred_lab = np.concatenate((self.org_im_l, org_ab), axis=2)
-        org_pred_lab = (np.clip(color.lab2rgb(org_pred_lab), 0, 1) * 255.)
 
-        saved_rgb = self.org_my_results * 0.5 + org_pred_lab * 0.5
-        # saved_rgb = self.org_my_results
-
-        self.result = saved_rgb.astype('uint8')
-        #
         suffix = datetime.datetime.now().strftime("%y%m%d_%H%M%S")
-        # save_path = "_".join([path, suffix])
-        # save_path = os.path.join('/'.join(path.split('/')[:-1]), 'output_img') ##
-
-        fileSave = QFileDialog.getSaveFileName(self, "save an output image", "./")
-        fileName = fileSave[0].split('/')[-1]
-        save_path = fileSave[0][0:-len(fileName)-1]
+        save_path = "_".join([path, suffix])
 
         print('saving result to <%s>\n' % save_path)
         if not os.path.exists(save_path):
             os.mkdir(save_path)
+
         result_bgr = cv2.cvtColor(self.result, cv2.COLOR_RGB2BGR)
         mask = self.im_mask0.transpose((1, 2, 0)).astype(np.uint8) * 255
-        # cv2.imwrite(os.path.join(save_path, 'input_mask.png'), mask)
-        # cv2.imwrite(os.path.join(save_path, 'ours.png'), result_bgr)
-        
-        cv2.imwrite(os.path.join(save_path, f'{fileName}.png'), result_bgr)
+        cv2.imwrite(os.path.join(save_path, 'input_mask.png'), mask)
+        cv2.imwrite(os.path.join(save_path, 'ours.png'), result_bgr)
 
     def enable_gray(self):
         self.use_gray = not self.use_gray
@@ -321,26 +263,11 @@ class GUIDraw(QWidget):
                         h=self.load_size//self.model.patch_size, w=self.load_size//self.model.patch_size,
                         p1=self.model.patch_size, p2=self.model.patch_size)[0]
         ab = ab.detach().numpy()
-        self.ab = ab
 
         ab_win = cv2.resize(ab, (self.win_w, self.win_h), interpolation=cv2.INTER_AREA) # INTER_CUBIC
         ab_win = ab_win * 110
         pred_lab = np.concatenate((self.l_win[..., np.newaxis], ab_win), axis=2)
-        #########
-        # my model
-        #########
-        my_results = cv2.resize(self.my_results, (self.win_w, self.win_h), interpolation=cv2.INTER_AREA).astype(np.float32)
-        pred_rgb = (np.clip(color.lab2rgb(pred_lab), 0, 1) * 255.)
-        # pred_rgb = my_results
-
-        print(f"current mode {mode}")
-        if mode == "ours":
-            pred_rgb = my_results*0.5 + pred_rgb*0.5
-        elif mode == "nohint":
-            pred_rgb = my_results
-
-        pred_rgb = pred_rgb.astype('uint8')
-        #####################################################
+        pred_rgb = (np.clip(color.lab2rgb(pred_lab), 0, 1) * 255).astype('uint8')
         self.result = pred_rgb
         # self.emit(SIGNAL('update_result'), self.result)
         self.update_result.emit(self.result)

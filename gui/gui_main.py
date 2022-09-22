@@ -3,7 +3,7 @@ import time
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QCheckBox, QGroupBox, QHBoxLayout, QPushButton, QVBoxLayout, QWidget
 
-from .gui_draw import GUIDraw
+from .gui_draw import GUIDraw, mode_info
 from .gui_gamut import GUIGamut
 from .gui_palette import GUIPalette
 from .gui_vis import GUI_VIS
@@ -47,11 +47,11 @@ class IColoriTUI(QWidget):
         self.colorize_ours.setFixedHeight(35)
 
 
-        self.colorize_hint = QPushButton("&hint") # colorize hint
+        self.colorize_hint = QPushButton("&hint (iColoriT)") # colorize hint
         self.colorize_hint.setFixedWidth(self.usedPalette.width()*0.75)
         self.colorize_hint.setFixedHeight(35)
 
-        self.colorize_nohint = QPushButton("&no hint") # colorize nohint
+        self.colorize_nohint = QPushButton("&no hint (Our Model)") # colorize nohint
         self.colorize_nohint.setFixedWidth(self.usedPalette.width()*0.75)
         self.colorize_nohint.setFixedHeight(35)
 
@@ -213,9 +213,10 @@ class IColoriTUI(QWidget):
     ######################################
     def reset_mode(self, mode):
         # self.start_t = time.time()
+        mode_info(str(mode))
         print('============================reset mode=========================================')
         self.reset()
-        print(mode)
-        return mode
+        # print(mode)
+        
     ######################################
     ######################################
