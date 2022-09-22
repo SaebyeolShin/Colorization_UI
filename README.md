@@ -4,7 +4,7 @@
 
 Checkpoints for iColoriT models are available in the links below.
 
-put pretrained models into  './saved_models/best/'
+put pretrained models into  `./saved_models/best/`
 
 |  	| hint |  Link 	|
 |:---:|:---:|:---:|
