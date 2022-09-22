@@ -6,10 +6,10 @@ Checkpoints for iColoriT models are available in the links below.
 
 put pretrained models into  ./saved_models/best/
 
-|  	|  Link 	|
-|:---:|:---:	|
-| Our Model 	| [Released Soon!] |
-| iColoriT	| [iColoriT (Google Drive)](https://drive.google.com/file/d/16i9ulB4VRbFLbLlAa7UjIQR6J334BeKW/view?usp=sharing)	|
+|  	| category |  Link 	|
+|:---:|:---:|:---:|
+| Our Model | no hint	| [Released Soon!] | 
+| iColoriT | hint	| [iColoriT (Google Drive)](https://drive.google.com/file/d/16i9ulB4VRbFLbLlAa7UjIQR6J334BeKW/view?usp=sharing)	|
 
 ## Installation
 
