@@ -100,4 +100,3 @@ if __name__ == '__main__':
     ex.setWindowTitle('iColoriT')
     ex.show()
     sys.exit(app.exec_())
-# python ./iColoriT_demo/icolorit_ui2.py --model_path ./saved_models/best/icolorit_base_4ch_patch16_224.pth --target_image /home/data/colorization/SR_magic/wYkp8TWqcrLk8y8N-lv7xg_output_spnv_x2.png
