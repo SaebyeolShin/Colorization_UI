@@ -271,8 +271,13 @@ class GUIDraw(QWidget):
         org_ab = org_ab * 110
         org_pred_lab = np.concatenate((self.org_im_l, org_ab), axis=2)
         org_pred_lab = (np.clip(color.lab2rgb(org_pred_lab), 0, 1) * 255.)
-
-        saved_rgb = self.org_my_results * 0.5 + org_pred_lab * 0.5
+        
+        if mode == "ours":
+            saved_rgb = self.org_my_results * 0.5 + org_pred_lab * 0.5
+        elif mode == "nohint":
+            saved_rgb = self.org_my_results
+            
+        # saved_rgb = self.org_my_results * 0.5 + org_pred_lab * 0.5
         # saved_rgb = self.org_my_results
 
         self.result = saved_rgb.astype('uint8')
