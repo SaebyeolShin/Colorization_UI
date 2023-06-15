@@ -39,6 +39,7 @@ def get_args():
     parser.set_defaults(avg_hint=True)
     parser.add_argument('--head_mode', type=str, default='cnn', help='head_mode')
     parser.add_argument('--mask_cent', action='store_true', help='mask_cent')
+    parser.add_argument('--patch', action='store_true', help='patch wise inference')
 
     args = parser.parse_args()
 
@@ -69,9 +70,15 @@ if __name__ == '__main__':
 
     model = get_model(args)
     model.to(args.device)
-    checkpoint = torch.load('./saved_models/best/icolorit_base_4ch_patch16_224.pth', map_location='cpu')
+    checkpoint = torch.load('./saved_models/icolorit_base_4ch_patch16_224.pth', map_location='cpu')
     model.load_state_dict(checkpoint['model'])
     model.eval()
+
+    our_model = get_model(args)
+    our_model.to(args.device)
+    our_checkpoint = torch.load('./saved_models/icolorit_noise.pth', map_location='cpu')
+    our_model.load_state_dict(our_checkpoint['model'])
+    our_model.eval()
 
     # no hint model
     print('Creating model:', 'nohint model' )
@@ -85,7 +92,7 @@ if __name__ == '__main__':
     # 쓸모없는 키 이름 지우기
     from collections import OrderedDict
     temp_dict = OrderedDict()
-    weight = torch.load('./saved_models/best/fold0_best_e49.pth', map_location='cpu')
+    weight = torch.load('./saved_models/fold0_best_e49.pth', map_location='cpu')
     for k, w in weight.items():
         temp_dict[k.replace('module.model.','')] = w
 
@@ -94,9 +101,9 @@ if __name__ == '__main__':
     nohint_model.eval()
     #
     app = QApplication(sys.argv)
-    ex = gui_main.IColoriTUI(color_model=model, nohint_model=nohint_model, img_file=args.target_image,
-                             load_size=args.input_size, win_size=720, device=args.device)
+    ex = gui_main.IColoriTUI(color_model=model, nohint_model=nohint_model, our_model=our_model, img_file=args.target_image,
+                             load_size=args.input_size, win_size=720, device=args.device, patch=args.patch)
     ex.setWindowIcon(QIcon('gui/icon.png'))
-    ex.setWindowTitle('iColoriT')
+    ex.setWindowTitle('Colorization UI')
     ex.show()
     sys.exit(app.exec_())

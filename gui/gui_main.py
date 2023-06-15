@@ -10,7 +10,7 @@ from .gui_vis import GUI_VIS
 
 
 class IColoriTUI(QWidget):
-    def __init__(self, color_model, nohint_model = None,img_file=None, load_size=224, win_size=256, device='cpu'):
+    def __init__(self, color_model, nohint_model = None, our_model = None, img_file=None, load_size=224, win_size=256, device='cpu', patch=False):
         # draw the layout
         QWidget.__init__(self)
 
@@ -42,16 +42,19 @@ class IColoriTUI(QWidget):
         ## colorize 버튼 추가
         ###################################
 
-        self.colorize_ours = QPushButton("&hint + no hint (default)") # colorize as our method
+        self.colorize_ours = QPushButton("&Ours") # colorize as our method
         self.colorize_ours.setFixedWidth(self.usedPalette.width()*0.75)
         self.colorize_ours.setFixedHeight(35)
 
+        self.colorize_combined = QPushButton("&hint + no hint") # colorize as our method
+        self.colorize_combined.setFixedWidth(self.usedPalette.width()*0.75)
+        self.colorize_combined.setFixedHeight(35)
 
         self.colorize_hint = QPushButton("&hint (iColoriT)") # colorize hint
         self.colorize_hint.setFixedWidth(self.usedPalette.width()*0.75)
         self.colorize_hint.setFixedHeight(35)
 
-        self.colorize_nohint = QPushButton("&no hint (Our Model)") # colorize nohint
+        self.colorize_nohint = QPushButton("&no hint") # colorize nohint
         self.colorize_nohint.setFixedWidth(self.usedPalette.width()*0.75)
         self.colorize_nohint.setFixedHeight(35)
 
@@ -59,6 +62,7 @@ class IColoriTUI(QWidget):
         self.Colorize_Menu = QVBoxLayout()
         self.Colorize_Menu.setSpacing(30)
         self.Colorize_Menu.addWidget(self.colorize_ours)
+        self.Colorize_Menu.addWidget(self.colorize_combined)
         self.Colorize_Menu.addWidget(self.colorize_hint)
         self.Colorize_Menu.addWidget(self.colorize_nohint)
         self.Colorize_Menu.setAlignment(Qt.AlignCenter)
@@ -68,6 +72,7 @@ class IColoriTUI(QWidget):
         colorLayout.addWidget(groupBox)
 
         self.colorize_ours.clicked.connect(lambda:self.reset_mode("ours"))
+        self.colorize_combined.clicked.connect(lambda:self.reset_mode("combined"))
         self.colorize_hint.clicked.connect(lambda:self.reset_mode("hint"))
         self.colorize_nohint.clicked.connect(lambda:self.reset_mode("nohint"))
 
@@ -79,8 +84,7 @@ class IColoriTUI(QWidget):
         # drawPad layout
         drawPadLayout = QVBoxLayout()
         mainLayout.addLayout(drawPadLayout)
-        # self.drawWidget = GUIDraw(color_model, load_size=load_size, win_size=win_size, device=device)
-        self.drawWidget = GUIDraw(color_model, nohint_model=nohint_model, load_size=load_size, win_size=win_size, device=device)
+        self.drawWidget = GUIDraw(color_model, nohint_model=nohint_model, our_model=our_model, load_size=load_size, win_size=win_size, device=device, patch=patch)
 
         drawPadLayout = self.AddWidget(self.drawWidget, 'Drawing Pad')
         mainLayout.addLayout(drawPadLayout)

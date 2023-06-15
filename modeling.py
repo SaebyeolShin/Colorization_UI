@@ -65,7 +65,6 @@ class Mlp(nn.Module):
     def forward(self, x):
         x = self.fc1(x)
         x = self.act(x)
-        # x = self.drop(x)
         # commit this for the orignal BERT implement
         x = self.fc2(x)
         x = self.drop(x)
@@ -416,6 +415,10 @@ class IColoriT(nn.Module):
 
     def forward_features(self, x, mask):
         # mask is 1D of 2D if 2D
+
+        # mask dim ==2 일때는 mask가 1채널, mask ab가 2채널, lab 3채널
+        # mask dim =4일때는 
+
         B, _, H, W = x.shape
         if mask.dim() == 2:
             _, L = mask.shape
@@ -464,102 +467,6 @@ class IColoriT(nn.Module):
         x = self.head(x)
         x = self.tanh(x)
         return x
-
-
-@register_model
-def icolorit_tiny_4ch_patch8_224(pretrained=False, **kwargs):
-    model = IColoriT(
-        num_classes=128,
-        img_size=224,
-        patch_size=8,
-        in_chans=4,
-        embed_dim=192,
-        depth=12,
-        num_heads=3,
-        mlp_ratio=4,
-        qkv_bias=True,
-        norm_layer=partial(nn.LayerNorm, eps=1e-6),
-        init_values=0.,
-        **kwargs)
-    model.default_cfg = _cfg()
-    if pretrained:
-        checkpoint = torch.load(
-            kwargs["init_ckpt"], map_location="cpu"
-        )
-        model.load_state_dict(checkpoint["model"])
-    return model
-
-
-@register_model
-def icolorit_tiny_4ch_patch16_224(pretrained=False, **kwargs):
-    model = IColoriT(
-        num_classes=512,
-        img_size=224,
-        patch_size=16,
-        in_chans=4,
-        embed_dim=192,
-        depth=12,
-        num_heads=3,
-        mlp_ratio=4,
-        qkv_bias=True,
-        norm_layer=partial(nn.LayerNorm, eps=1e-6),
-        init_values=0.,
-        **kwargs)
-    model.default_cfg = _cfg()
-    if pretrained:
-        checkpoint = torch.load(
-            kwargs["init_ckpt"], map_location="cpu"
-        )
-        model.load_state_dict(checkpoint["model"])
-    return model
-
-
-@register_model
-def icolorit_tiny_4ch_patch32_224(pretrained=False, **kwargs):
-    model = IColoriT(
-        num_classes=2048,
-        img_size=224,
-        patch_size=32,
-        in_chans=4,
-        embed_dim=192,
-        depth=12,
-        num_heads=3,
-        mlp_ratio=4,
-        qkv_bias=True,
-        norm_layer=partial(nn.LayerNorm, eps=1e-6),
-        init_values=0.,
-        **kwargs)
-    model.default_cfg = _cfg()
-    if pretrained:
-        checkpoint = torch.load(
-            kwargs["init_ckpt"], map_location="cpu"
-        )
-        model.load_state_dict(checkpoint["model"])
-    return model
-
-
-@register_model
-def icolorit_small_4ch_patch16_224(pretrained=False, **kwargs):
-    model = IColoriT(
-        img_size=224,
-        patch_size=16,
-        in_chans=4,
-        embed_dim=384,
-        depth=12,
-        num_heads=6,
-        mlp_ratio=4,
-        qkv_bias=True,
-        norm_layer=partial(nn.LayerNorm, eps=1e-6),
-        init_values=0.,
-        **kwargs)
-    model.default_cfg = _cfg()
-    if pretrained:
-        checkpoint = torch.load(
-            kwargs["init_ckpt"], map_location="cpu"
-        )
-        model.load_state_dict(checkpoint["model"])
-    return model
-
 
 @register_model
 def icolorit_base_4ch_patch16_224(pretrained=False, **kwargs):

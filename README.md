@@ -1,15 +1,19 @@
 # Colorization_UI
 
+<p align="center"><img src="./test_img/temp.png"></p>
+
 ## Pretrained Models
 
 Checkpoints for iColoriT models are available in the links below.
 
-put pretrained models into  `./saved_models/best/`
+put pretrained models into  `./saved_models/`
 
 |  	| hint |  Link 	|
 |:---:|:---:|:---:|
-| Our Model | &cross;	| [Google Drive](https://drive.google.com/file/d/1o0DbtsVW_YIpPH0rIVFLHnuBGdcdm_rV/view?usp=share_link) | 
+| Our Model | &check;	| [Google Drive](https://drive.google.com/file/d/1Ntlusy8POrKU1VL0e2NCknfUfrSa_dJM/view?usp=sharing) | 
 | iColoriT | &check;	| [Google Drive](https://drive.google.com/file/d/16i9ulB4VRbFLbLlAa7UjIQR6J334BeKW/view?usp=sharing)	|
+| No hint | &cross;	| [Google Drive](https://drive.google.com/file/d/1o0DbtsVW_YIpPH0rIVFLHnuBGdcdm_rV/view?usp=share_link) | 
+
 
 ## Installation
 

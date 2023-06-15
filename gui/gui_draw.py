@@ -6,6 +6,7 @@ import sys
 import cv2
 import numpy as np
 import torch
+import torch.nn as nn
 from einops import rearrange
 from PyQt5.QtCore import QPoint, QSize, Qt, pyqtSignal
 from PyQt5.QtGui import QColor, QImage, QPainter
@@ -24,6 +25,93 @@ def mode_info(md):
     print(f"colorization mode selected: {mode}")
     return mode
 
+def patch_inference(gray_imgs, model, img_size=768, stride=740, scale=3, batch_size=32, device='cpu'):
+    ensemble_img = []
+    len_weights = 0 # total of the ensemble weights
+    p_w = 1 # patch weight
+    i_w = 1 # image weight
+    stride = 740
+    img_size = 768
+    scale = 3
+    img_size2 = int(img_size * scale)
+    stride2   = int(stride * scale)
+    _,c,h,w = gray_imgs.shape
+    ##############
+    crop = []
+    position = []
+    batch_count = 0
+    batch_size = 32
+    device = 'cpu'
+
+    result_img = np.zeros([3, h, w])
+    voting_mask = np.zeros([3, h, w])
+    for top in range(0, h, stride2):
+        for left in range(0, w, stride2):#-img_size+stride
+            piece = torch.zeros([1, 1, img_size2, img_size2])
+            temp = gray_imgs[:, :, top:top+img_size2, left:left+img_size2] # bs, c, h, w
+
+            piece[:, :, :temp.shape[2], :temp.shape[3]] = temp
+            # print('piece2 : ',piece.shape)
+
+            # crop.append(piece)
+            crop.append(piece)
+            position.append([top, left])
+            batch_count += 1
+            if batch_count == batch_size:
+                crop = torch.cat(crop, axis=0).to(device)
+                pred  = model(crop)
+                #
+                pred  = model(nn.Upsample(scale_factor=1/scale, mode='bilinear')(crop)) # downsampling
+                pred = nn.Upsample(scale_factor=scale, mode='bilinear')(pred)
+                pred = torch.cat([crop, pred], 1)
+                pred = pred.cpu().detach().numpy()
+
+                crop = []
+                batch_count = 0
+                for num, (t, l) in enumerate(position):
+                    piece = pred[num]
+                    c_, h_, w_ = result_img[:, t:t+img_size2, l:l+img_size2].shape
+                    result_img[:, t:t+img_size2, l:l+img_size2] += piece[:, :h_, :w_]
+                    voting_mask[:, t:t+img_size2, l:l+img_size2] += 1
+                position = []
+    if batch_count != 0: # batch size만큼 안채워지면
+        crop = torch.cat(crop, axis=0).to(device)
+
+        pred  = model(nn.Upsample(scale_factor=1/scale, mode='bilinear')(crop))
+        pred = nn.Upsample(scale_factor=scale, mode='bilinear')(pred)
+        pred = torch.cat([crop,pred], 1)
+        pred = pred.cpu().detach().numpy()
+        crop = []
+        batch_count = 0
+        for num, (t, l) in enumerate(position):
+            piece = pred[num]
+            c_, h_, w_ = result_img[:, t:t+img_size2, l:l+img_size2].shape
+            result_img[:, t:t+h_, l:l+w_] += piece[:, :h_, :w_]
+            voting_mask[:, t:t+h_, l:l+w_] += 1
+        position = []
+
+
+    result_img = result_img/voting_mask
+    ensemble_img.append(result_img*p_w)
+    len_weights += p_w
+
+    #########
+    # image-wise ensmeble (나중에는, for구문 안에 넣어야할듯,,)
+    gray_imgs = gray_imgs.to(device)
+    #
+    pred = model(nn.Upsample(size=img_size, mode='bilinear')(gray_imgs))
+    pred = nn.Upsample(size=(h,w), mode='bilinear')(pred)
+
+    pred = torch.cat([gray_imgs, pred], 1).cpu().detach().numpy() # bs, c, h, w
+    ensemble_img.append(pred[0]*i_w)
+    len_weights += i_w
+
+    # ensmeble
+    result_img = np.sum(ensemble_img, axis=0)/len_weights
+
+    # ab, lab
+    return np.around(result_img*255).astype(np.uint8).transpose(1,2,0)
+
 class GUIDraw(QWidget):
 
     # Signals
@@ -33,13 +121,14 @@ class GUIDraw(QWidget):
     update_ab = pyqtSignal(object)
     update_result = pyqtSignal(object)
 
-    def __init__(self, model=None, nohint_model=None, load_size=224, win_size=512, device='cpu'):
+    def __init__(self, model=None, nohint_model=None, our_model=None, load_size=224, win_size=512, device='cpu', patch=False):
         QWidget.__init__(self)
         self.image_file = None
         self.pos = None
         self.model = model
         # add
         self.nohint_model = nohint_model
+        self.our_model = our_model
 
         self.win_size = win_size
         self.load_size = load_size
@@ -56,6 +145,9 @@ class GUIDraw(QWidget):
         self.use_gray = True
         self.total_images = 0
         self.image_id = 0
+
+        # patch inference
+        self.patch = patch
         
     def clock_count(self):
         self.count_secs -= 1
@@ -64,22 +156,34 @@ class GUIDraw(QWidget):
     def init_result(self, image_file):
         # self.read_image(image_file.encode('utf-8'))  # read an image
         self.read_image(image_file)  # read an image
-        ##############################
-        # my model
-        im_full = cv2.resize(self.im_full, (768,768), interpolation=cv2.INTER_AREA)
-        gray = cv2.cvtColor(im_full, cv2.COLOR_BGR2GRAY)
-        gray = np.stack([gray, gray, gray], -1)
-        l_img = cv2.cvtColor(gray, cv2.COLOR_BGR2LAB)[:,:,[0]].transpose((2,0,1))
-        l_img = torch.from_numpy(l_img).type(torch.FloatTensor).to(self.device)/255
-        ab = self.nohint_model(l_img.unsqueeze(0))[0]#.detach().cpu().numpy().transpose((1,2,0))
 
-        lab = torch.cat([l_img, ab], axis=0).permute(1,2,0).cpu().detach().numpy() * 255 # h,w,c
-        lab = lab.astype(np.uint8)
-        self.my_results = cv2.cvtColor(lab, cv2.COLOR_LAB2BGR) # 왜.. gbr밖에
+        # patch-wise inference
+        if self.patch:
+            im_full = self.im_full
+            gray = cv2.cvtColor(im_full, cv2.COLOR_BGR2GRAY)
+            gray = np.stack([gray, gray, gray], -1)
+            l_img = cv2.cvtColor(gray, cv2.COLOR_BGR2LAB)[:,:,[0]].transpose((2,0,1))
+            l_img = torch.from_numpy(l_img).type(torch.FloatTensor).to(self.device)/255
+            lab = patch_inference(l_img.unsqueeze(0), self.nohint_model)
+            self.my_results = cv2.cvtColor(lab, cv2.COLOR_LAB2BGR) # 왜.. gbr밖에
+            ab = lab[:,:,[1,2]]
+        else:
+            ##### 
+            im_full = cv2.resize(self.im_full, (768,768), interpolation=cv2.INTER_AREA)
+            gray = cv2.cvtColor(im_full, cv2.COLOR_BGR2GRAY)
+            gray = np.stack([gray, gray, gray], -1)
+            l_img = cv2.cvtColor(gray, cv2.COLOR_BGR2LAB)[:,:,[0]].transpose((2,0,1))
+            l_img = torch.from_numpy(l_img).type(torch.FloatTensor).to(self.device)/255
 
-        #######
-        # 저장용
-        ab = ab.permute(1,2,0).cpu().detach().numpy() * 255
+            ab = self.nohint_model(l_img.unsqueeze(0))[0]#.detach().cpu().numpy().transpose((1,2,0))
+            lab = torch.cat([l_img, ab], axis=0).permute(1,2,0).cpu().detach().numpy() * 255 # h,w,c
+            lab = lab.astype(np.uint8)
+            self.my_results = cv2.cvtColor(lab, cv2.COLOR_LAB2BGR) # 왜.. gbr밖에
+
+            #######
+            # 저장용
+            ab = ab.permute(1,2,0).cpu().detach().numpy() * 255
+
         ab = cv2.resize(ab, (self.im_full.shape[1],self.im_full.shape[0]), interpolation=cv2.INTER_AREA) # INTER_CUBIC
         im_l = cv2.cvtColor(self.im_full, cv2.COLOR_BGR2LAB)[:,:,[0]]
         org_my_results = np.concatenate([im_l, ab], axis=2)
@@ -160,7 +264,6 @@ class GUIDraw(QWidget):
         is_predict = False
         snap_qcolor = self.calibrate_color(self.user_color, self.pos)
         self.color = snap_qcolor
-        # self.emit(SIGNAL('update_color'), str('background-color: %s' % self.color.name()))
         self.update_color.emit(str('background-color: %s' % self.color.name()))
 
         if self.ui_mode == 'point':
@@ -170,7 +273,6 @@ class GUIDraw(QWidget):
                 self.user_color, self.brushWidth, isNew = self.uiControl.addPoint(self.pos, snap_qcolor, self.user_color, self.brushWidth)
                 if isNew:
                     is_predict = True
-                    # self.predict_color()
 
         if self.ui_mode == 'stroke':
             self.uiControl.addStroke(self.prev_pos, self.pos, snap_qcolor, self.user_color, self.brushWidth)
@@ -178,7 +280,6 @@ class GUIDraw(QWidget):
             isRemoved = self.uiControl.erasePoint(self.pos)
             if isRemoved:
                 is_predict = True
-                # self.predict_color()
         return is_predict
 
     def reset(self):
@@ -271,20 +372,12 @@ class GUIDraw(QWidget):
         org_ab = org_ab * 110
         org_pred_lab = np.concatenate((self.org_im_l, org_ab), axis=2)
         org_pred_lab = (np.clip(color.lab2rgb(org_pred_lab), 0, 1) * 255.)
-        
-#         if mode == "ours":
-#             saved_rgb = self.org_my_results * 0.5 + org_pred_lab * 0.5
-#         elif mode == "nohint":
-#             saved_rgb = self.org_my_results
             
         saved_rgb = self.org_my_results * 0.5 + org_pred_lab * 0.5
-        # saved_rgb = self.org_my_results
 
         self.result = saved_rgb.astype('uint8')
         #
         suffix = datetime.datetime.now().strftime("%y%m%d_%H%M%S")
-        # save_path = "_".join([path, suffix])
-        # save_path = os.path.join('/'.join(path.split('/')[:-1]), 'output_img') ##
 
         fileSave = QFileDialog.getSaveFileName(self, "save an output image", "./")
         fileName = fileSave[0].split('/')[-1]
@@ -295,8 +388,6 @@ class GUIDraw(QWidget):
             os.mkdir(save_path)
         result_bgr = cv2.cvtColor(self.result, cv2.COLOR_RGB2BGR)
         mask = self.im_mask0.transpose((1, 2, 0)).astype(np.uint8) * 255
-        # cv2.imwrite(os.path.join(save_path, 'input_mask.png'), mask)
-        # cv2.imwrite(os.path.join(save_path, 'ours.png'), result_bgr)
         
         cv2.imwrite(os.path.join(save_path, f'{fileName}.png'), result_bgr)
 
@@ -331,23 +422,36 @@ class GUIDraw(QWidget):
         ab_win = cv2.resize(ab, (self.win_w, self.win_h), interpolation=cv2.INTER_AREA) # INTER_CUBIC
         ab_win = ab_win * 110
         pred_lab = np.concatenate((self.l_win[..., np.newaxis], ab_win), axis=2)
+
+
+        # _im_lab is the full color image, _img_mask is the ab_hint+mask
+        our_ab = self.our_model(_im_lab.unsqueeze(0), _img_mask.unsqueeze(0))
+        our_ab = rearrange(our_ab, 'b (h w) (p1 p2 c) -> b (h p1) (w p2) c', 
+                        h=self.load_size//self.model.patch_size, w=self.load_size//self.model.patch_size,
+                        p1=self.model.patch_size, p2=self.model.patch_size)[0]
+        our_ab = our_ab.detach().numpy()
+
+        our_ab_win = cv2.resize(our_ab, (self.win_w, self.win_h), interpolation=cv2.INTER_AREA) # INTER_CUBIC
+        our_ab_win = our_ab_win * 110
+        pred_ours = np.concatenate((self.l_win[..., np.newaxis], our_ab_win), axis=2)
         #########
         # my model
         #########
         my_results = cv2.resize(self.my_results, (self.win_w, self.win_h), interpolation=cv2.INTER_AREA).astype(np.float32)
         pred_rgb = (np.clip(color.lab2rgb(pred_lab), 0, 1) * 255.)
-        # pred_rgb = my_results
+        our_prediction = (np.clip(color.lab2rgb(pred_ours), 0, 1) * 255.)
 
         print(f"current mode {mode}")
-        if mode == "ours":
+        if mode == "combined":
             pred_rgb = my_results*0.5 + pred_rgb*0.5
         elif mode == "nohint":
             pred_rgb = my_results
+        elif mode =="ours":
+            pred_rgb = our_prediction*0.5 + pred_rgb*0.5
 
         pred_rgb = pred_rgb.astype('uint8')
         #####################################################
         self.result = pred_rgb
-        # self.emit(SIGNAL('update_result'), self.result)
         self.update_result.emit(self.result)
         self.update()
 
@@ -367,13 +471,6 @@ class GUIDraw(QWidget):
 
         self.uiControl.update_painter(painter)
         painter.end()
-
-    # def wheelEvent(self, event):
-    #     d = event.delta() / 120
-    #     self.brushWidth = min(4.05 * self.scale, max(0, self.brushWidth + d * self.scale))
-    #     print('update brushWidth = %f' % self.brushWidth)
-    #     self.update_ui(move_point=True)
-    #     self.update()
 
     def is_same_point(self, pos1, pos2):
         if pos1 is None or pos2 is None:
